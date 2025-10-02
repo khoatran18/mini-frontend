@@ -1,6 +1,6 @@
 "use client";
 import { useState } from 'react';
-import { AuthAPI } from '@/src/services/auth';
+import { AuthAPI } from '@/lib/endpoints';
 
 export default function ChangePasswordPage() {
   const [username, setUsername] = useState('');
@@ -15,7 +15,7 @@ export default function ChangePasswordPage() {
     e.preventDefault();
     setError(null); setMsg(null); setLoading(true);
     try {
-      const res = await AuthAPI.changePassword({ username, old_password: oldPassword, new_password: newPassword, role });
+      const res = await AuthAPI.changePassword({ old_password: oldPassword, new_password: newPassword });
       setMsg(res.message);
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || 'Change password failed');

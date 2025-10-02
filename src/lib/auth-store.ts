@@ -1,18 +1,9 @@
 'use client';
 
 import { create } from 'zustand';
-import jwt from 'jwt-decode';
-import { AuthAPI, Tokens } from '../endpoints';
-import { LoginInput } from '../endpoints';
+import { AuthAPI, Tokens } from '@/lib/endpoints';
+import { LoginInput } from '@/lib/endpoints';
 import { useCart } from './cart-store';
-
-interface DecodedToken {
-    exp: number;
-    iat: number;
-    role: string;
-    user_id: number;
-    username: string;
-}
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -28,10 +19,7 @@ export const useAuth = create<AuthState>((set) => ({
   role: null,
   userId: null,
   login: async (credentials, onSuccess) => {
-    const { access_token, refresh_token } = await AuthAPI.login(credentials);
-    const decodedToken: DecodedToken = jwt(access_token);
-    const { user_id, role } = decodedToken;
-    
+    const { access_token, refresh_token, role, user_id } = await AuthAPI.login(credentials);
     Tokens.save(access_token, refresh_token, role, user_id);
     set({ isAuthenticated: true, role, userId: user_id });
     onSuccess();

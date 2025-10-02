@@ -5,7 +5,7 @@ export type ApiMessage = { message: string; success: boolean };
 
 // Auth
 export type LoginInput = { username: string; password: string; role: string };
-export type LoginOutput = { access_token: string; refresh_token: string } & ApiMessage;
+export type LoginOutput = { access_token: string; refresh_token: string; role: string; user_id: number; } & ApiMessage;
 
 export type RegisterInput = { username: string; password: string; role: string };
 export type RegisterOutput = ApiMessage;
@@ -13,8 +13,12 @@ export type RegisterOutput = ApiMessage;
 export type RefreshTokenInput = { refresh_token: string };
 export type RefreshTokenOutput = { access_token: string; refresh_token: string } & ApiMessage;
 
-export type ChangePasswordInput = { username: string; old_password: string; new_password: string; role: string };
+export type ChangePasswordInput = { old_password: string; new_password: string; };
 export type ChangePasswordOutput = ApiMessage;
+
+export type RegisterSellerRolesInput = { user_id: number, roles: string[] };
+export type RegisterSellerRolesOutput = ApiMessage;
+
 
 // Products
 export type Product = { id: number; name: string; price: number; inventory: number; seller_id: number; attributes?: Record<string, any> };
@@ -27,6 +31,7 @@ export type ProductCRUDOutput = ApiMessage;
 export type OrderItem = { id: number; product_id: number; productName?: string; quantity: number; price: number; order_id: number };
 export type Order = { id: number; buyer_id: number; status: string; total_price: number; items: OrderItem[] };
 export type OrderInput = { buyer_id: number; order_items: Omit<OrderItem, 'id' | 'order_id' | 'price'>[] };
+export type UpdateOrderInput = { status: string };
 export type GetOrdersOutput = { orders: Order[] } & ApiMessage;
 export type GetOrderOutput = { order: Order } & ApiMessage;
 export type OrderCRUDOutput = ApiMessage;
@@ -50,6 +55,7 @@ export const AuthAPI = {
   register: (input: RegisterInput) => api.post<RegisterOutput>('/auth/register', input).then(r => r.data),
   changePassword: (input: ChangePasswordInput) => api.post<ChangePasswordOutput>('/auth/change-password', input).then(r => r.data),
   refresh: (input: RefreshTokenInput) => api.post<RefreshTokenOutput>('/auth/refresh-token', input).then(r => r.data),
+  registerSellerRoles: (input: RegisterSellerRolesInput) => api.post<RegisterSellerRolesOutput>('/auth/register-seller-roles', input).then(r => r.data),
 };
 
 export const ProductAPI = {
@@ -64,38 +70,29 @@ export const ProductAPI = {
 export const OrderAPI = {
   create: (input: OrderInput) => api.post<OrderCRUDOutput>('/orders', input).then(r => r.data),
   get: (id: number) => api.get<GetOrderOutput>(`/orders/${id}`).then(r => r.data.order),
-  getOrdersByBuyer: (buyerId: number) => api.get<GetOrdersOutput>(`/orders?buyer_id=${buyerId}`).then(r => r.data.orders),
+  getOrdersByBuyer: (buyerId: number, status?: string) => {
+    let url = `/orders?buyer_id=${buyerId}`;
+    if (status) {
+      url += `&status=${status}`;
+    }
+    return api.get<GetOrdersOutput>(url).then(r => r.data.orders);
+  },
+  update: (id: number, input: UpdateOrderInput) => api.put<OrderCRUDOutput>(`/orders/${id}`, input).then(r => r.data),
   cancel: (id: number) => api.delete<OrderCRUDOutput>(`/orders/${id}`).then(r => r.data),
 };
 
-const BuyerAPI = {
+export const BuyerAPI = {
+  create: (input: BuyerInput) => api.post<BuyerCRUDOutput>('/users/buyers', input).then(r => r.data),
   get: (userId: number) => api.get<GetBuyerOutput>(`/users/buyers/${userId}`).then(r => r.data),
   update: (userId: number, input: BuyerInput) => api.put<BuyerCRUDOutput>(`/users/buyers/${userId}`, input).then(r => r.data),
+  delete: (userId: number) => api.delete<BuyerCRUDOutput>(`/users/buyers/${userId}`).then(r => r.data),
 };
 
-const SellerAPI = {
+export const SellerAPI = {
+  create: (input: SellerInput) => api.post<SellerCRUDOutput>('/users/sellers', input).then(r => r.data),
   get: (sellerId: number) => api.get<GetSellerOutput>(`/users/sellers/${sellerId}`).then(r => r.data),
   update: (sellerId: number, input: SellerInput) => api.put<SellerCRUDOutput>(`/users/sellers/${sellerId}`, input).then(r => r.data),
-};
-
-export const UserAPI = {
-  getProfile: (id: number, role: string) => {
-    if (role === 'buyer') {
-      return BuyerAPI.get(id).then(data => data.buyer);
-    } else if (role.startsWith('seller')) {
-      // We are assuming the user ID is the same as the seller ID for fetching profiles.
-      return SellerAPI.get(id).then(data => data.seller);
-    }
-    return Promise.reject(new Error('Invalid role for fetching profile'));
-  },
-  updateProfile: (id: number, role: string, data: any) => {
-    if (role === 'buyer') {
-      return BuyerAPI.update(id, data as BuyerInput);
-    } else if (role.startsWith('seller')) {
-      return SellerAPI.update(id, data as SellerInput);
-    }
-    return Promise.reject(new Error('Invalid role for updating profile'));
-  },
+  delete: (sellerId: number) => api.delete<SellerCRUDOutput>(`/users/sellers/${sellerId}`).then(r => r.data),
 };
 
 // Token utilities

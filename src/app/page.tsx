@@ -1,18 +1,18 @@
 'use client';
 
-import { useAuth } from '@/src/lib/auth-store';
-import BuyerDashboard from '@/src/components/BuyerDashboard';
-import SellerDashboard from '@/src/components/SellerDashboard';
+import { useAuth } from '@/lib/auth-store';
+import BuyerDashboard from '@/components/BuyerDashboard';
+import { SellerDashboard } from '@/components/SellerDashboard';
 
 export default function HomePage() {
-  const { role } = useAuth();
+  const { role, userId } = useAuth();
 
   if (role === 'buyer') {
     return <BuyerDashboard />;
   }
 
   if (role && ['seller_admin', 'seller_employee'].includes(role)) {
-    return <SellerDashboard />;
+    return <SellerDashboard sellerId={userId!} />;
   }
 
   return (

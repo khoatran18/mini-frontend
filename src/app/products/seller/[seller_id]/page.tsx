@@ -1,59 +1,37 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ProductAPI } from '@/src/lib/endpoints';
-import withAuth from '@/src/lib/with-auth';
-import { AuthComponentProps } from '@/src/lib/with-auth';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { Product, ProductAPI } from '@/lib/endpoints';
 import Link from 'next/link';
 
-interface SellerProductsPageProps extends AuthComponentProps {
-  params: { seller_id: string };
-}
-
-const SellerProductsPage = ({ params }: SellerProductsPageProps) => {
+const ProductsBySellerPage = () => {
+  const params = useParams();
   const sellerId = Number(params.seller_id);
-  const queryClient = useQueryClient();
+  const [products, setProducts] = useState<Product[]>([]);
 
-  const { data: products, isLoading, error } = useQuery({
-    queryKey: ['products', { sellerId }],
-    queryFn: () => ProductAPI.getProductsBySeller(sellerId),
-    enabled: !!sellerId,
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (productId: number) => ProductAPI.delete(productId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-    },
-  });
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading products</div>;
+  useEffect(() => {
+    if (sellerId) {
+      ProductAPI.getProductsBySeller(sellerId)
+        .then(setProducts)
+        .catch(console.error);
+    }
+  }, [sellerId]);
 
   return (
-    <div>
-       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold">My Products</h1>
-        <Link href="/products/new" className="bg-blue-500 text-white px-4 py-2 rounded">
-          Add New Product
-        </Link>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {products?.map((product) => (
-          <div key={product.id} className="border p-4 rounded">
-            <h2 className="text-xl font-semibold">{product.name}</h2>
-            <p>Price: ${product.price}</p>
-            <p>Inventory: {product.inventory}</p>
-             <Link href={`/products/${product.id}/edit`} className="text-blue-500 hover:underline mt-2 inline-block">
-              Edit
-            </Link>
-            <button
-              onClick={() => deleteMutation.mutate(product.id)}
-              className="text-red-500 hover:underline mt-2 ml-4"
-              disabled={deleteMutation.isPending}
-            >
-              {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-            </button>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Products by Seller</h1>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {products.map(product => (
+          <div key={product.id} className="border rounded-lg p-4 shadow-sm">
+            <h3 className="text-xl font-semibold">{product.name}</h3>
+            <p className="text-gray-600">Price: ${product.price}</p>
+            <p className="text-gray-600">Inventory: {product.inventory}</p>
+            <div className="mt-4">
+              <Link href={`/products/${product.id}`} className="text-blue-500 hover:underline">
+                View Details
+              </Link>
+            </div>
           </div>
         ))}
       </div>
@@ -61,4 +39,4 @@ const SellerProductsPage = ({ params }: SellerProductsPageProps) => {
   );
 };
 
-export default withAuth(SellerProductsPage, ['seller_admin', 'seller_employee']);
+export default ProductsBySellerPage;

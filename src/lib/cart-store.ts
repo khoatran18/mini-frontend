@@ -10,7 +10,8 @@ interface CartItem extends Product {
 interface CartState {
   items: CartItem[];
   addToCart: (product: Product) => void;
-  removeFromCart: (productId: number) => void;
+  removeItem: (productId: number) => void;
+  updateItemQuantity: (productId: number, quantity: number) => void;
   clearCart: () => void;
 }
 
@@ -29,7 +30,13 @@ export const useCart = create<CartState>((set) => ({
         return { items: [...state.items, { ...product, quantity: 1 }] };
       }
     }),
-  removeFromCart: (productId) =>
+  removeItem: (productId) =>
     set((state) => ({ items: state.items.filter((item) => item.id !== productId) })),
+  updateItemQuantity: (productId, quantity) =>
+    set((state) => ({
+      items: state.items
+        .map((item) => (item.id === productId ? { ...item, quantity } : item))
+        .filter((item) => item.quantity > 0),
+    })),
   clearCart: () => set({ items: [] }),
 }));

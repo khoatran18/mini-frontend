@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/src/lib/auth-store';
-import { useCart } from '@/src/lib/cart-store';
+import { useAuth } from '@/lib/auth-store';
+import { useCart } from '@/lib/cart-store';
 
 const Navbar = () => {
   const { role, userId, logout } = useAuth();
@@ -40,12 +40,12 @@ const Navbar = () => {
               </>
             )}
             {role.startsWith('seller') && (
-              <Link href={`/products/seller/${userId}`} className="mr-4">
-                My Products
+              <Link href="/seller" className="mr-4">
+                Seller Dashboard
               </Link>
             )}
             <Link href="/profile" className="mr-4">
-              My Profile
+              Profile
             </Link>
             <button onClick={handleLogout} className="hover:underline">
               Logout

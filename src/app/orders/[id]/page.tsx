@@ -1,73 +1,48 @@
 'use client';
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { OrderAPI } from '@/src/lib/endpoints';
-import withAuth from '@/src/lib/with-auth';
-import { useParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { Order, OrderAPI } from '@/lib/endpoints';
 
 const OrderDetailPage = () => {
   const params = useParams();
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const id = Number(params.id);
+  const orderId = Number(params.id);
+  const [order, setOrder] = useState<Order | null>(null);
 
-  const { data: order, isLoading, error } = useQuery({
-    queryKey: ['order', id],
-    queryFn: () => OrderAPI.get(id),
-    enabled: !!id,
-  });
+  useEffect(() => {
+    if (orderId) {
+      OrderAPI.get(orderId)
+        .then(setOrder)
+        .catch(console.error);
+    }
+  }, [orderId]);
 
-  const cancelMutation = useMutation({
-    mutationFn: () => OrderAPI.cancel(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['orders'] });
-      queryClient.invalidateQueries({ queryKey: ['order', id] });
-      router.push('/orders');
-    },
-  });
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading order</div>;
-  if (!order) return <div>Order not found</div>;
+  if (!order) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="bg-white shadow rounded-lg p-6">
-        <div className="flex justify-between items-start mb-4">
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Order Details</h1>
+      <div className="border rounded-lg p-6 shadow-sm mb-8">
+        <p className="text-lg font-semibold">Order ID: {order.id}</p>
+        <p className="text-gray-600">Status: {order.status}</p>
+        <p className="text-gray-600">Total: ${order.total_price.toFixed(2)}</p>
+      </div>
+      <div>
+        <h2 className="text-2xl font-semibold mb-4">Items</h2>
+        {order.items.map(item => (
+          <div key={item.id} className="flex justify-between items-center border-b py-4">
             <div>
-                <h1 className="text-3xl font-bold">Order #{order.id}</h1>
-                <p className="text-xl text-gray-600">Status: {order.status}</p>
+              <h3 className="text-xl font-semibold">{item.productName}</h3>
+              <p className="text-gray-600">Quantity: {item.quantity}</p>
+              <p className="text-gray-600">Price: ${item.price.toFixed(2)}</p>
             </div>
-            <button 
-                onClick={() => cancelMutation.mutate()} 
-                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:bg-gray-400"
-                disabled={cancelMutation.isPending || order.status !== 'pending'}
-            >
-                {cancelMutation.isPending ? 'Cancelling...' : 'Cancel Order'}
-            </button>
-        </div>
-
-        <div className="mb-6">
-            <h2 className="text-2xl font-semibold border-b pb-2">Order Items</h2>
-            <div className="space-y-4 mt-4">
-                {order.items.map(item => (
-                    <div key={item.productId} className="flex justify-between items-center p-2 rounded-lg">
-                        <div>
-                            <p className="font-semibold text-lg">{item.productName}</p>
-                            <p className="text-gray-600">Quantity: {item.quantity}</p>
-                        </div>
-                        <p className="text-gray-800 font-semibold">${item.price}</p>
-                    </div>
-                ))}
-            </div>
-        </div>
-
-        <div className="text-right">
-            <p className="text-2xl font-bold">Total Price: ${order.totalPrice}</p>
-        </div>
+          </div>
+        ))}
       </div>
     </div>
   );
 };
 
-export default withAuth(OrderDetailPage, ['buyer']);
+export default OrderDetailPage;

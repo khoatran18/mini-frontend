@@ -1,108 +1,86 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ProductAPI, ProductInput } from '@/src/lib/endpoints';
-import withAuth from '@/src/lib/with-auth';
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { ProductAPI, Product, ProductInput } from '@/lib/endpoints';
 
 const EditProductPage = () => {
-  const [product, setProduct] = useState<Omit<ProductInput, 'sellerId'> | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const params = useParams();
-  const queryClient = useQueryClient();
-  const id = Number(params.id);
+  const productId = Number(params.id);
 
-  const { data: existingProduct, isLoading: isProductLoading } = useQuery({
-    queryKey: ['product', id],
-    queryFn: () => ProductAPI.get(id),
-    enabled: !!id,
-  });
+  const [name, setName] = useState('');
+  const [price, setPrice] = useState(0);
+  const [inventory, setInventory] = useState(0);
 
   useEffect(() => {
-    if (existingProduct) {
-      setProduct(existingProduct);
+    if (productId) {
+      ProductAPI.get(productId)
+        .then(product => {
+          setName(product.name);
+          setPrice(product.price);
+          setInventory(product.inventory);
+        })
+        .catch(console.error);
     }
-  }, [existingProduct]);
+  }, [productId]);
 
-  const mutation = useMutation({
-    mutationFn: (updatedProduct: Partial<ProductInput> & { id: number }) => ProductAPI.update(id, updatedProduct),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['products'] });
-      queryClient.invalidateQueries({ queryKey: ['product', id] });
-      router.push(`/products/${id}`);
-    },
-    onError: (err: Error) => {
-      setError(err.message);
-    },
-  });
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    if (product) {
-      setProduct({ ...product, [name]: name === 'price' || name === 'inventory' ? Number(value) : value });
-    }
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (product) {
-      mutation.mutate({ ...product, id });
+
+    const productInput: Partial<ProductInput> = { name, price, inventory };
+
+    try {
+      await ProductAPI.update(productId, productInput);
+      router.push('/seller');
+    } catch (error) {
+      console.error('Error updating product:', error);
     }
   };
-
-  if (isProductLoading) return <div>Loading...</div>;
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-4">Edit Product</h1>
-      {error && <p className="text-red-500">{error}</p>}
-      {product && (
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="name" className="block font-medium">Product Name</label>
-            <input
-              id="name"
-              name="name"
-              type="text"
-              value={product.name}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="price" className="block font-medium">Price</label>
-            <input
-              id="price"
-              name="price"
-              type="number"
-              value={product.price}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="inventory" className="block font-medium">Inventory</label>
-            <input
-              id="inventory"
-              name="inventory"
-              type="number"
-              value={product.inventory}
-              onChange={handleChange}
-              className="w-full p-2 border rounded"
-              required
-            />
-          </div>
-          <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded" disabled={mutation.isPending}>
-            {mutation.isPending ? 'Updating...' : 'Update Product'}
-          </button>
-        </form>
-      )}
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Edit Product</h1>
+      <form onSubmit={handleSubmit} className="max-w-md mx-auto">
+        <div className="mb-4">
+          <label htmlFor="name" className="block text-gray-700 font-semibold mb-2">Product Name</label>
+          <input
+            type="text"
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full px-3 py-2 border rounded-md"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="price" className="block text-gray-700 font-semibold mb-2">Price</label>
+          <input
+            type="number"
+            id="price"
+            value={price}
+            onChange={(e) => setPrice(Number(e.target.value))}
+            className="w-full px-3 py-2 border rounded-md"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label htmlFor="inventory" className="block text-gray-700 font-semibold mb-2">Inventory</label>
+          <input
+            type="number"
+            id="inventory"
+            value={inventory}
+            onChange={(e) => setInventory(Number(e.target.value))}
+            className="w-full px-3 py-2 border rounded-md"
+            required
+          />
+        </div>
+        <button type="submit" className="w-full bg-blue-500 text-white px-4 py-2 rounded-md">
+          Update Product
+        </button>
+      </form>
     </div>
   );
 };
 
-export default withAuth(EditProductPage, ['seller_admin', 'seller_employee']);
+export default EditProductPage;

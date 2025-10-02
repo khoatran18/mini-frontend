@@ -1,46 +1,45 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { ProductAPI } from '@/src/lib/endpoints';
-import { useCart } from '@/src/lib/cart-store';
-import { useAuth } from '@/src/lib/auth-store';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
+import { Product, ProductAPI } from '@/lib/endpoints';
+import { useCart } from '@/lib/cart-store';
 
-interface ProductPageProps {
-  params: { id: string };
-}
-
-const ProductPage = ({ params }: ProductPageProps) => {
-  const { id } = params;
-  const { data: product, error, isLoading } = useQuery({
-    queryKey: ['product', id],
-    queryFn: () => ProductAPI.get(Number(id)),
-    enabled: !!id,
-  });
+const ProductDetailPage = () => {
+  const params = useParams();
+  const productId = Number(params.id);
+  const [product, setProduct] = useState<Product | null>(null);
   const { addToCart } = useCart();
-  const { role } = useAuth();
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>An error occurred: {error.message}</div>;
-  if (!product) return <div>Product not found</div>;
+  useEffect(() => {
+    if (productId) {
+      ProductAPI.get(productId)
+        .then(setProduct)
+        .catch(console.error);
+    }
+  }, [productId]);
+
+  if (!product) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div className="container mx-auto p-4">
-      <div className="bg-white shadow rounded-lg p-6">
-        <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
-        <p className="text-xl text-gray-800 mb-2">Price: ${product.price}</p>
-        <p className="text-lg text-gray-600 mb-4">In Stock: {product.inventory}</p>
-        {role === 'buyer' && (
+    <div className="container mx-auto px-4 py-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+          <p className="text-gray-600 mb-4">Price: ${product.price}</p>
+          <p className="text-gray-600 mb-4">Inventory: {product.inventory}</p>
           <button 
-            onClick={() => addToCart(product, 1)}
-            className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
-            disabled={product.inventory === 0}
+            onClick={() => addToCart(product)}
+            className="bg-blue-500 text-white px-6 py-2 rounded-md"
           >
             Add to Cart
           </button>
-        )}
+        </div>
       </div>
     </div>
   );
 };
 
-export default ProductPage;
+export default ProductDetailPage;

@@ -1,11 +1,10 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { UserAPI } from '@/src/lib/endpoints';
-import withAuth from '@/src/lib/with-auth';
-import { AuthComponentProps } from '@/src/lib/with-auth';
+import { SellerAPI } from '@/lib/endpoints';
+import withAuth from '@/lib/with-auth';
 
-interface SellerProfilePageProps extends AuthComponentProps {
+interface SellerProfilePageProps {
   params: { id: string };
 }
 
@@ -14,20 +13,24 @@ const SellerProfilePage = ({ params }: SellerProfilePageProps) => {
 
   const { data: seller, isLoading, error } = useQuery({
     queryKey: ['seller', sellerId],
-    queryFn: () => UserAPI.getSeller(sellerId),
+    queryFn: () => SellerAPI.get(sellerId),
     enabled: !!sellerId,
   });
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading profile</div>;
-  if (!seller) return <div>No profile found.</div>;
+  if (!seller || !seller.seller) return <div>No profile found.</div>;
 
   return (
     <div>
       <h1 className="text-2xl font-bold">Seller Profile</h1>
-      <p>ID: {seller.id}</p>
-      <p>Name: {seller.name}</p>
-      <p>Email: {seller.email}</p>
+      <p>ID: {seller.seller.id}</p>
+      <p>Name: {seller.seller.name}</p>
+      <p>Phone: {seller.seller.phone}</p>
+      <p>Address: {seller.seller.address}</p>
+      <p>Description: {seller.seller.description}</p>
+      <p>Bank Account: {seller.seller.bank_account}</p>
+      <p>Tax Code: {seller.seller.tax_code}</p>
     </div>
   );
 };
