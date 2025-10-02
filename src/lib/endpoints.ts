@@ -52,7 +52,7 @@ export type SellerCRUDOutput = ApiMessage;
 
 export const AuthAPI = {
   login: (input: LoginInput) => api.post<LoginOutput>('/auth/login', input).then(r => r.data),
-  register: (input: RegisterInput) => api.post<RegisterOutput>('/api/auth/register', input).then(r => r.data),
+  register: (input: RegisterInput) => api.post<RegisterOutput>('/auth/register', input).then(r => r.data),
   changePassword: (input: ChangePasswordInput) => api.post<ChangePasswordOutput>('/auth/change-password', input).then(r => r.data),
   refresh: (input: RefreshTokenInput) => api.post<RefreshTokenOutput>('/auth/refresh-token', input).then(r => r.data),
   registerSellerRoles: (input: RegisterSellerRolesInput) => api.post<RegisterSellerRolesOutput>('/auth/register-seller-roles', input).then(r => r.data),

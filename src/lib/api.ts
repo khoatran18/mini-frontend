@@ -38,10 +38,28 @@ if (isBrowser) {
   api.interceptors.response.use(
     (response) => {
       console.log('Response received:', response.data);
+      // Handle "soft errors" where the HTTP status is 2xx but the payload indicates an error.
+      if (response.data && response.data.success === false) {
+        const error = new AxiosError(
+          response.data.message || 'The backend indicated an error.',
+          'ERR_BAD_RESPONSE',
+          response.config,
+          response.request,
+          response
+        );
+        return Promise.reject(error);
+      }
       return response;
     },
     async (error: AxiosError) => {
-      console.error('API Error:', { message: error.message, response: error.response?.data, status: error.response?.status, config: error.config });
+      console.error('API Error:', { 
+        message: error.message, 
+        response: error.response?.data, 
+        status: error.response?.status, 
+        url: `${error.config?.baseURL}${error.config?.url}`,
+        method: error.config?.method,
+      });
+
       const status = error.response?.status;
       const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
 
