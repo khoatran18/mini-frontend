@@ -1,40 +1,67 @@
-"use client";
+'use client';
+
 import { useState } from 'react';
-import { AuthAPI } from '@/src/services/auth';
+import { useRouter } from 'next/navigation';
+import { AuthAPI, RegisterInput } from '@/src/lib/endpoints';
 
 export default function RegisterPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [role, setRole] = useState('buyer');
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [credentials, setCredentials] = useState<RegisterInput>({ username: '', password: '', role: 'buyer' });
+  const [error, setError] = useState('');
+  const router = useRouter();
 
-  const onSubmit = async (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setCredentials({ ...credentials, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null); setMsg(null); setLoading(true);
     try {
-      const res = await AuthAPI.register({ username, password, role });
-      setMsg(res.message);
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Register failed');
-    } finally { setLoading(false); }
+      await AuthAPI.register(credentials);
+      router.push('/auth/login');
+    } catch (err) {
+      setError('Failed to register. Please try again.');
+    }
   };
 
   return (
-    <div className="max-w-md mx-auto">
-      <h1 className="text-2xl font-semibold mb-4">Register</h1>
-      <form onSubmit={onSubmit} className="space-y-3">
-        <input className="w-full border rounded px-3 py-2" placeholder="Username" value={username} onChange={e=>setUsername(e.target.value)} />
-        <input className="w-full border rounded px-3 py-2" type="password" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} />
-        <select className="w-full border rounded px-3 py-2" value={role} onChange={e=>setRole(e.target.value)}>
-          <option value="admin">admin</option>
-          <option value="buyer">buyer</option>
-          <option value="seller">seller</option>
-        </select>
-        {msg && <div className="text-green-700">{msg}</div>}
-        {error && <div className="text-red-600">{error}</div>}
-        <button disabled={loading} className="w-full bg-blue-600 text-white rounded px-4 py-2">{loading ? 'Submitting...' : 'Register'}</button>
+    <div className="flex items-center justify-center h-screen">
+      <form onSubmit={handleSubmit} className="p-8 bg-white rounded shadow-md w-96">
+        <h1 className="text-2xl font-bold mb-4">Register</h1>
+        {error && <p className="text-red-500">{error}</p>}
+        <div className="mb-4">
+          <label>Username</label>
+          <input
+            type="text"
+            name="username"
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded mt-1"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label>Password</label>
+          <input
+            type="password"
+            name="password"
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded mt-1"
+            required
+          />
+        </div>
+        <div className="mb-4">
+          <label>Role</label>
+          <select
+            name="role"
+            onChange={handleChange}
+            className="w-full p-2 border border-gray-300 rounded mt-1"
+          >
+            <option value="buyer">Buyer</option>
+            <option value="seller_admin">Seller Admin</option>
+          </select>
+        </div>
+        <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded">
+          Register
+        </button>
       </form>
     </div>
   );

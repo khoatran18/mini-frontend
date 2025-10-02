@@ -1,48 +1,47 @@
-"use client";
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+'use client';
+
+import withAuth from '@/src/lib/with-auth';
+import { useQuery } from '@tanstack/react-query';
+import { ProductAPI } from '@/src/lib/endpoints';
 import Link from 'next/link';
-import { ProductAPI, Product } from '@/src/services/product';
+import { useAuth } from '@/src/lib/auth-store';
 
-export default function ProductsBySellerPage() {
-  const params = useParams();
-  const sellerId = Number(params?.seller_id);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const SellerProductsPage = () => {
+  const { role } = useAuth();
+  // A real app would get the seller ID from the user's session/profile
+  const sellerId = 1; 
 
-  useEffect(() => {
-    if (!sellerId) return;
-    const load = async () => {
-      setLoading(true); setError(null);
-      try {
-        const res = await ProductAPI.bySeller(sellerId);
-        setProducts(res.products || []);
-      } catch (err: any) {
-        setError(err?.response?.data?.error || err?.message || 'Failed to load products');
-      } finally { setLoading(false); }
-    };
-    load();
-  }, [sellerId]);
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['sellerProducts', sellerId],
+    queryFn: () => ProductAPI.bySeller(sellerId),
+    enabled: !!sellerId,
+  });
 
-  if (!sellerId) return <div>Invalid seller id.</div>;
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>An error occurred: {error.message}</div>;
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-4">Products by Seller #{sellerId}</h1>
-      {loading && <div>Loading...</div>}
-      {error && <div className="text-red-600 mb-2">{error}</div>}
-      <ul className="space-y-2">
-        {products.map(p => (
-          <li key={p.id} className="border rounded p-3 flex items-center justify-between">
-            <div>
-              <div className="font-medium">{p.name}</div>
-              <div className="text-sm opacity-80">${p.price} • In stock: {p.inventory}</div>
-            </div>
-            {p.id !== undefined && <Link className="text-blue-600" href={`/products/${p.id}`}>View</Link>}
-          </li>
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-2xl font-bold">My Products</h1>
+        <Link href="/products/new" className="bg-blue-500 text-white px-4 py-2 rounded">
+          Add New Product
+        </Link>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {data?.products.map((product) => (
+          <div key={product.id} className="border p-4 rounded">
+            <h2 className="text-xl font-semibold">{product.name}</h2>
+            <p>Price: ${product.price}</p>
+            <p>Stock: {product.inventory}</p>
+            <Link href={`/products/${product.id}/edit`} className="text-blue-500 hover:underline mt-2 inline-block">
+              Edit
+            </Link>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
-}
+};
+
+export default withAuth(SellerProductsPage, ['seller_admin', 'seller_employee']);

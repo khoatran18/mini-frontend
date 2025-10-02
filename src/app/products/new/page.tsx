@@ -1,45 +1,88 @@
-"use client";
+'use client';
+
 import { useState } from 'react';
-import { ProductAPI, CreateProductInput } from '@/src/services/product';
+import { useRouter } from 'next/navigation';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ProductAPI, ProductInput } from '@/src/lib/endpoints';
+import withAuth from '@/src/lib/with-auth';
 
-export default function ProductCreatePage() {
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState<number>(0);
-  const [inventory, setInventory] = useState<number>(0);
-  const [sellerId, setSellerId] = useState<number>(0);
-  const [attributes, setAttributes] = useState<string>('{}');
-  const [loading, setLoading] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
+const NewProductPage = () => {
+  const [product, setProduct] = useState<Omit<ProductInput, 'sellerId'>>({ name: '', price: 0, inventory: 0, attributes: {} });
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+  const queryClient = useQueryClient();
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); setMsg(null); setError(null); setLoading(true);
-    try {
-      let attrs: Record<string, any> | undefined = undefined;
-      if (attributes.trim()) {
-        try { attrs = JSON.parse(attributes); } catch { throw new Error('Attributes must be valid JSON'); }
-      }
-      const payload: CreateProductInput = { name, price, inventory, seller_id: sellerId, attributes: attrs };
-      const res = await ProductAPI.create(payload);
-      setMsg(res.message);
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Create product failed');
-    } finally { setLoading(false); }
+  const mutation = useMutation({
+    mutationFn: (newProduct: ProductInput) => ProductAPI.create(newProduct),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      router.push('/products');
+    },
+    onError: (err: Error) => {
+      setError(err.message);
+    },
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setProduct({ ...product, [name]: name === 'price' || name === 'inventory' ? Number(value) : value });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    // In a real app, the seller ID would come from the user's session
+    const sellerId = 1; 
+    mutation.mutate({ ...product, sellerId });
   };
 
   return (
-    <div className="max-w-lg">
-      <h1 className="text-2xl font-semibold mb-4">Create Product</h1>
-      <form onSubmit={submit} className="grid grid-cols-2 gap-3">
-        <input className="border rounded px-3 py-2 col-span-2" placeholder="Name" value={name} onChange={e=>setName(e.target.value)} />
-        <input className="border rounded px-3 py-2" type="number" placeholder="Price" value={price||''} onChange={e=>setPrice(Number(e.target.value)||0)} />
-        <input className="border rounded px-3 py-2" type="number" placeholder="Inventory" value={inventory||''} onChange={e=>setInventory(Number(e.target.value)||0)} />
-        <input className="border rounded px-3 py-2 col-span-2" type="number" placeholder="Seller ID" value={sellerId||''} onChange={e=>setSellerId(Number(e.target.value)||0)} />
-        <textarea className="border rounded px-3 py-2 col-span-2" rows={5} placeholder="Attributes (JSON)" value={attributes} onChange={e=>setAttributes(e.target.value)} />
-        {msg && <div className="text-green-700 col-span-2">{msg}</div>}
-        {error && <div className="text-red-600 col-span-2">{error}</div>}
-        <button disabled={loading} className="bg-blue-600 text-white rounded px-4 py-2 col-span-2">{loading? 'Submitting...' : 'Create'}</button>
+    <div>
+      <h1 className="text-2xl font-bold mb-4">Add New Product</h1>
+      {error && <p className="text-red-500">{error}</p>}
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label htmlFor="name" className="block font-medium">Product Name</label>
+          <input
+            id="name"
+            name="name"
+            type="text"
+            value={product.name}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="price" className="block font-medium">Price</label>
+          <input
+            id="price"
+            name="price"
+            type="number"
+            value={product.price}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="inventory" className="block font-medium">Inventory</label>
+          <input
+            id="inventory"
+            name="inventory"
+            type="number"
+            value={product.inventory}
+            onChange={handleChange}
+            className="w-full p-2 border rounded"
+            required
+          />
+        </div>
+        {/* Add fields for attributes as needed */}
+        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded" disabled={mutation.isPending}>
+          {mutation.isPending ? 'Adding...' : 'Add Product'}
+        </button>
       </form>
     </div>
   );
-}
+};
+
+export default withAuth(NewProductPage, ['seller_admin', 'seller_employee']);

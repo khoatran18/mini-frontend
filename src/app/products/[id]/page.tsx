@@ -1,48 +1,50 @@
-"use client";
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { ProductAPI, Product } from '@/src/services/product';
+'use client';
 
-export default function ProductDetailPage() {
-  const params = useParams();
-  const id = Number(params?.id);
-  const [product, setProduct] = useState<Product | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+import withAuth from '@/src/lib/with-auth';
+import { useQuery } from '@tanstack/react-query';
+import { ProductAPI } from '@/src/lib/endpoints';
+import { useCart } from '@/src/lib/cart-store';
 
-  useEffect(() => {
-    if (!id) return;
-    const run = async () => {
-      setLoading(true); setError(null);
-      try {
-        const res = await ProductAPI.getById(id);
-        setProduct(res.product);
-      } catch (err: any) {
-        setError(err?.response?.data?.error || err?.message || 'Failed to load product');
-      } finally {
-        setLoading(false);
-      }
-    };
-    run();
-  }, [id]);
+const ProductDetailsPage = ({ params }: { params: { id: string } }) => {
+  const productId = Number(params.id);
+  const { addToCart } = useCart();
 
-  if (!id) return <div>Invalid id.</div>;
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['product', productId],
+    queryFn: () => ProductAPI.getById(productId),
+    enabled: !!productId,
+  });
+
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>An error occurred: {error.message}</div>;
+
+  if (!data?.product) return <div>Product not found.</div>;
+
+  const { product } = data;
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold mb-4">Product Detail</h1>
-      {loading && <div>Loading...</div>}
-      {error && <div className="text-red-600 mb-2">{error}</div>}
-      {product && (
-        <div className="border rounded p-4">
-          <div className="text-lg font-medium">{product.name}</div>
-          <div className="opacity-80">Price: ${product.price}</div>
-          <div className="opacity-80">Inventory: {product.inventory}</div>
-          {product.attributes && (
-            <pre className="mt-2 text-xs bg-black/5 p-2 rounded">{JSON.stringify(product.attributes, null, 2)}</pre>
-          )}
+      <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+      <p className="text-xl mb-2">Price: ${product.price}</p>
+      <p className="mb-4">In Stock: {product.inventory}</p>
+      {/* Placeholder for future attributes */}
+      {product.attributes && (
+        <div className="mb-4">
+          <h2 className="text-xl font-semibold">Product Details</h2>
+          <ul>
+            {Object.entries(product.attributes).map(([key, value]) => (
+              <li key={key}>
+                <strong>{key}:</strong> {String(value)}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
+      <button onClick={() => addToCart(product)} className="bg-blue-500 text-white px-4 py-2 rounded">
+        Add to Cart
+      </button>
     </div>
   );
-}
+};
+
+export default withAuth(ProductDetailsPage, ['buyer']);
