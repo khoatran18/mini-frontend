@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Product, ProductAPI } from '@/lib/endpoints';
+import { Product, ProductAPI } from '@/src/lib/endpoints';
 import Link from 'next/link';
 
 interface SellerDashboardProps {
@@ -32,7 +32,7 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ sellerId }) =>
   return (
     <div>
       <h2 className="text-2xl font-semibold mb-4">Your Products</h2>
-      <Link href="/products/new" className="bg-blue-500 text-white px-4 py-2 rounded-md mb-4 inline-block">
+      <Link href="/products/new" className="bg-primary text-primary-foreground shadow hover:bg-primary/90 px-4 py-2 rounded-md mb-4 inline-block">
         Add New Product
       </Link>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -42,10 +42,10 @@ export const SellerDashboard: React.FC<SellerDashboardProps> = ({ sellerId }) =>
             <p className="text-gray-600">Price: ${product.price}</p>
             <p className="text-gray-600">Inventory: {product.inventory}</p>
             <div className="mt-4">
-              <Link href={`/products/${product.id}/edit`} className="text-blue-500 hover:underline mr-4">
+              <Link href={`/products/${product.id}/edit`} className="text-primary hover:underline mr-4">
                 Edit
               </Link>
-              <button onClick={() => handleDelete(product.id)} className="text-red-500 hover:underline">Delete</button>
+              <button onClick={() => handleDelete(product.id)} className="text-destructive hover:underline">Delete</button>
             </div>
           </div>
         ))}
