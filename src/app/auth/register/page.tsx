@@ -2,11 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AuthAPI, RegisterInput } from '@/src/lib/endpoints';
+import { useAuth } from '@/src/lib/auth-store';
+import { RegisterInput } from '@/src/lib/endpoints';
 
 export default function RegisterPage() {
   const [credentials, setCredentials] = useState<RegisterInput>({ username: '', password: '', role: 'buyer' });
   const [error, setError] = useState('');
+  const { register } = useAuth();
   const router = useRouter();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -16,10 +18,9 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await AuthAPI.register(credentials);
-      router.push('/auth/login');
-    } catch (err) {
-      setError('Failed to register. Please try again.');
+      await register(credentials, () => router.push('/auth/login'));
+    } catch (err: any) {
+      setError(err.message || 'Failed to register. Please try again.');
     }
   };
 
