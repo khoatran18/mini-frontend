@@ -29,10 +29,7 @@ export const useAuth = create<AuthState>((set) => ({
     onSuccess();
   },
   register: async (credentials, onSuccess) => {
-    const response = await AuthAPI.register(credentials);
-    if (!response.success) {
-      throw new Error(response.message || 'Registration failed');
-    }
+    await AuthAPI.register(credentials);
     onSuccess();
   },
   logout: (onSuccess) => {

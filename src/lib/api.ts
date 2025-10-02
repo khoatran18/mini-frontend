@@ -41,7 +41,7 @@ if (isBrowser) {
       return response;
     },
     async (error: AxiosError) => {
-      console.error('API Error:', error.response?.data);
+      console.error('API Error:', { message: error.message, response: error.response?.data, status: error.response?.status, config: error.config });
       const status = error.response?.status;
       const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
 
