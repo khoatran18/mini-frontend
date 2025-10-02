@@ -1,51 +1,43 @@
-"use client";
-import { useState } from 'react';
+'use client';
+
+import { useQuery } from '@tanstack/react-query';
+import { OrderAPI } from '@/src/lib/endpoints';
+import withAuth from '@/src/lib/with-auth';
+import { useAuth } from '@/src/lib/auth-store';
 import Link from 'next/link';
-import { OrderAPI, Order } from '@/src/lib/endpoints';
 
-export default function OrdersPage() {
-  const [buyerId, setBuyerId] = useState<number>(0);
-  const [status, setStatus] = useState<string>('pending');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const OrdersPage = () => {
+  const { userId } = useAuth();
+  const { data: orders, isLoading, error } = useQuery({
+    queryKey: ['orders', { buyerId: userId }],
+    queryFn: () => OrderAPI.getOrdersByBuyer(userId!),
+    enabled: !!userId,
+  });
 
-  const search = async () => {
-    if (!buyerId || !status) return;
-    setLoading(true); setError(null);
-    try {
-      const res = await OrderAPI.listByBuyerAndStatus(buyerId, status);
-      setOrders(res.orders || []);
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Failed to get orders');
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading orders</div>;
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold mb-4">Orders</h1>
-      <div className="flex gap-2 mb-4 items-center">
-        <label>Buyer ID</label>
-        <input type="number" value={buyerId || ''} onChange={e=>setBuyerId(Number(e.target.value)||0)} className="border rounded px-2 py-1 w-28" />
-        <label>Status</label>
-        <input value={status} onChange={e=>setStatus(e.target.value)} className="border rounded px-2 py-1 w-40" />
-        <button className="px-3 py-1 rounded bg-gray-200" onClick={search}>Search</button>
-      </div>
-      {loading && <div>Loading...</div>}
-      {error && <div className="text-red-600 mb-2">{error}</div>}
-      <ul className="space-y-2">
-        {orders.map(o => (
-          <li key={o.id} className="border rounded p-3 flex items-center justify-between">
-            <div>
-              <div>ID: {o.id} • Buyer: {o.buyer_id}</div>
-              <div className="text-sm opacity-80">Status: {o.status} • Total: {o.total_price}</div>
+    <div className="container mx-auto p-4">
+      <h1 className="text-2xl font-bold mb-4">My Orders</h1>
+      <div className="space-y-4">
+        {orders?.map((order) => (
+          <div key={order.id} className="border p-4 rounded-lg shadow-sm">
+            <div className="flex justify-between">
+              <div>
+                <h2 className="text-xl font-semibold">Order #{order.id}</h2>
+                <p className="text-gray-600">Status: {order.status}</p>
+                <p className="text-gray-800 font-bold">Total: ${order.totalPrice}</p>
+              </div>
+              <Link href={`/orders/${order.id}`} className="self-center bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                View Details
+              </Link>
             </div>
-            {o.id !== undefined && <Link className="text-blue-600" href={`/orders/${o.id}`}>View</Link>}
-          </li>
+          </div>
         ))}
-      </ul>
+      </div>
     </div>
   );
-}
+};
+
+export default withAuth(OrdersPage, ['buyer']);

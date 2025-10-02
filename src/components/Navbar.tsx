@@ -6,7 +6,7 @@ import { useAuth } from '@/src/lib/auth-store';
 import { useCart } from '@/src/lib/cart-store';
 
 const Navbar = () => {
-  const { role, logout } = useAuth();
+  const { role, userId, logout } = useAuth();
   const { items } = useCart();
   const router = useRouter();
 
@@ -23,22 +23,30 @@ const Navbar = () => {
           E-Commerce
         </Link>
       </div>
-      <div>
+      <div className="flex items-center">
+        <Link href="/products" className="mr-4">
+          Products
+        </Link>
         {role ? (
           <>
             {role === 'buyer' && (
-              <Link href="/cart" className="mr-4">
-                Cart ({cartItemCount})
-              </Link>
+              <>
+                <Link href="/cart" className="mr-4">
+                  Cart ({cartItemCount})
+                </Link>
+                <Link href="/orders" className="mr-4">
+                  My Orders
+                </Link>
+              </>
             )}
-            <Link href="/products" className="mr-4">
-              Products
-            </Link>
             {role.startsWith('seller') && (
-              <Link href="/products/seller/1" className="mr-4">
+              <Link href={`/products/seller/${userId}`} className="mr-4">
                 My Products
               </Link>
             )}
+            <Link href="/profile" className="mr-4">
+              My Profile
+            </Link>
             <button onClick={handleLogout} className="hover:underline">
               Logout
             </button>

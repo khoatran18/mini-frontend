@@ -1,50 +1,46 @@
 'use client';
 
-import withAuth from '@/src/lib/with-auth';
 import { useQuery } from '@tanstack/react-query';
 import { ProductAPI } from '@/src/lib/endpoints';
 import { useCart } from '@/src/lib/cart-store';
+import { useAuth } from '@/src/lib/auth-store';
 
-const ProductDetailsPage = ({ params }: { params: { id: string } }) => {
-  const productId = Number(params.id);
-  const { addToCart } = useCart();
+interface ProductPageProps {
+  params: { id: string };
+}
 
-  const { data, error, isLoading } = useQuery({
-    queryKey: ['product', productId],
-    queryFn: () => ProductAPI.getById(productId),
-    enabled: !!productId,
+const ProductPage = ({ params }: ProductPageProps) => {
+  const { id } = params;
+  const { data: product, error, isLoading } = useQuery({
+    queryKey: ['product', id],
+    queryFn: () => ProductAPI.get(Number(id)),
+    enabled: !!id,
   });
+  const { addToCart } = useCart();
+  const { role } = useAuth();
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>An error occurred: {error.message}</div>;
-
-  if (!data?.product) return <div>Product not found.</div>;
-
-  const { product } = data;
+  if (!product) return <div>Product not found</div>;
 
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
-      <p className="text-xl mb-2">Price: ${product.price}</p>
-      <p className="mb-4">In Stock: {product.inventory}</p>
-      {/* Placeholder for future attributes */}
-      {product.attributes && (
-        <div className="mb-4">
-          <h2 className="text-xl font-semibold">Product Details</h2>
-          <ul>
-            {Object.entries(product.attributes).map(([key, value]) => (
-              <li key={key}>
-                <strong>{key}:</strong> {String(value)}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <button onClick={() => addToCart(product)} className="bg-blue-500 text-white px-4 py-2 rounded">
-        Add to Cart
-      </button>
+    <div className="container mx-auto p-4">
+      <div className="bg-white shadow rounded-lg p-6">
+        <h1 className="text-3xl font-bold mb-4">{product.name}</h1>
+        <p className="text-xl text-gray-800 mb-2">Price: ${product.price}</p>
+        <p className="text-lg text-gray-600 mb-4">In Stock: {product.inventory}</p>
+        {role === 'buyer' && (
+          <button 
+            onClick={() => addToCart(product, 1)}
+            className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 disabled:bg-gray-400"
+            disabled={product.inventory === 0}
+          >
+            Add to Cart
+          </button>
+        )}
+      </div>
     </div>
   );
 };
 
-export default withAuth(ProductDetailsPage, ['buyer']);
+export default ProductPage;

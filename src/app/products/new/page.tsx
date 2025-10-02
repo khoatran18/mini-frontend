@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProductAPI, ProductInput } from '@/src/lib/endpoints';
 import withAuth from '@/src/lib/with-auth';
+import { useAuth } from '@/src/lib/auth-store';
 
 const NewProductPage = () => {
   const [product, setProduct] = useState<Omit<ProductInput, 'sellerId'>>({ name: '', price: 0, inventory: 0, attributes: {} });
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { userId } = useAuth();
 
   const mutation = useMutation({
     mutationFn: (newProduct: ProductInput) => ProductAPI.create(newProduct),
@@ -30,9 +32,11 @@ const NewProductPage = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, the seller ID would come from the user's session
-    const sellerId = 1; 
-    mutation.mutate({ ...product, sellerId });
+    if (userId === null) {
+      setError("User not authenticated");
+      return;
+    }
+    mutation.mutate({ ...product, sellerId: userId });
   };
 
   return (
@@ -76,7 +80,6 @@ const NewProductPage = () => {
             required
           />
         </div>
-        {/* Add fields for attributes as needed */}
         <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded" disabled={mutation.isPending}>
           {mutation.isPending ? 'Adding...' : 'Add Product'}
         </button>

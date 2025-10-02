@@ -1,88 +1,73 @@
-"use client";
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import { OrderAPI, Order } from '@/src/lib/endpoints';
+'use client';
 
-export default function OrderDetailPage() {
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { OrderAPI } from '@/src/lib/endpoints';
+import withAuth from '@/src/lib/with-auth';
+import { useParams, useRouter } from 'next/navigation';
+
+const OrderDetailPage = () => {
   const params = useParams();
-  const id = Number(params?.id);
-  const [order, setOrder] = useState<Order | null>(null);
-  const [status, setStatus] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const id = Number(params.id);
 
-  const load = async () => {
-    if (!id) return;
-    setLoading(true); setError(null);
-    try {
-      const res = await OrderAPI.getById(id);
-      setOrder(res.order);
-      setStatus(res.order?.status || '');
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Failed to load order');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const { data: order, isLoading, error } = useQuery({
+    queryKey: ['order', id],
+    queryFn: () => OrderAPI.get(id),
+    enabled: !!id,
+  });
 
-  useEffect(() => { load(); }, [id]);
+  const cancelMutation = useMutation({
+    mutationFn: () => OrderAPI.cancel(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['order', id] });
+      router.push('/orders');
+    },
+  });
 
-  const updateStatus = async () => {
-    if (!order) return;
-    setError(null); setMessage(null); setLoading(true);
-    try {
-      const res = await OrderAPI.update(id, { order: { ...order, status } });
-      setMessage(res.message);
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Update failed');
-    } finally { setLoading(false); }
-  };
-
-  const cancelOrder = async () => {
-    setError(null); setMessage(null); setLoading(true);
-    try {
-      const res = await OrderAPI.cancel(id);
-      setMessage(res.message);
-      await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.error || err?.message || 'Cancel failed');
-    } finally { setLoading(false); }
-  };
-
-  if (!id) return <div>Invalid id.</div>;
+  if (isLoading) return <div>Loading...</div>;
+  if (error) return <div>Error loading order</div>;
+  if (!order) return <div>Order not found</div>;
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold mb-4">Order Detail</h1>
-      {loading && <div>Loading...</div>}
-      {error && <div className="text-red-600 mb-2">{error}</div>}
-      {message && <div className="text-green-700 mb-2">{message}</div>}
-      {order && (
-        <div className="space-y-3">
-          <div className="border rounded p-3">
-            <div>ID: {order.id}</div>
-            <div>Buyer ID: {order.buyer_id}</div>
-            <div>Status: {order.status}</div>
-            <div>Total: {order.total_price}</div>
-          </div>
-          <div className="border rounded p-3">
-            <div className="font-medium mb-2">Update status</div>
-            <input value={status} onChange={e=>setStatus(e.target.value)} className="border rounded px-2 py-1 mr-2" />
-            <button onClick={updateStatus} className="px-3 py-1 rounded bg-blue-600 text-white">Update</button>
-            <button onClick={cancelOrder} className="px-3 py-1 rounded bg-red-600 text-white ml-2">Cancel order</button>
-          </div>
-          <div className="border rounded p-3">
-            <div className="font-medium mb-2">Items</div>
-            <ul className="list-disc ml-5">
-              {order.order_items?.map((it, idx) => (
-                <li key={idx}>#{it.product_id} x{it.quantity} {it.name ? `• ${it.name}` : ''} {it.price ? `• $${it.price}` : ''}</li>
-              ))}
-            </ul>
-          </div>
+    <div className="container mx-auto p-4">
+      <div className="bg-white shadow rounded-lg p-6">
+        <div className="flex justify-between items-start mb-4">
+            <div>
+                <h1 className="text-3xl font-bold">Order #{order.id}</h1>
+                <p className="text-xl text-gray-600">Status: {order.status}</p>
+            </div>
+            <button 
+                onClick={() => cancelMutation.mutate()} 
+                className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:bg-gray-400"
+                disabled={cancelMutation.isPending || order.status !== 'pending'}
+            >
+                {cancelMutation.isPending ? 'Cancelling...' : 'Cancel Order'}
+            </button>
         </div>
-      )}
+
+        <div className="mb-6">
+            <h2 className="text-2xl font-semibold border-b pb-2">Order Items</h2>
+            <div className="space-y-4 mt-4">
+                {order.items.map(item => (
+                    <div key={item.productId} className="flex justify-between items-center p-2 rounded-lg">
+                        <div>
+                            <p className="font-semibold text-lg">{item.productName}</p>
+                            <p className="text-gray-600">Quantity: {item.quantity}</p>
+                        </div>
+                        <p className="text-gray-800 font-semibold">${item.price}</p>
+                    </div>
+                ))}
+            </div>
+        </div>
+
+        <div className="text-right">
+            <p className="text-2xl font-bold">Total Price: ${order.totalPrice}</p>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default withAuth(OrderDetailPage, ['buyer']);
