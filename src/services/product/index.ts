@@ -1,0 +1,1 @@
+export { ProductAPI, type Product, type GetProductsOutput, type GetProductByIDOutput, type CreateProductInput, type CreateProductOutput, type UpdateProductInput, type UpdateProductOutput, type GetProductsBySellerIDOutput } from '@/src/lib/endpoints';

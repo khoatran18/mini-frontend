@@ -2,21 +2,40 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
-First, run the development server:
+First, install dependencies and run the development server:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Backend API base URL
+
+The frontend talks to a backend API through Axios configured in `src/lib/api.ts`.
+
+- By default (when no environment variable is set), the app uses relative URLs (e.g., `/auth/login`), which means it will call the same origin that serves the frontend.
+- To point the frontend at a different backend (e.g., a local backend running on port 8080), set the environment variable `NEXT_PUBLIC_API_BASE_URL`.
+
+Examples:
+
+- Windows PowerShell
+  ```powershell
+  setx NEXT_PUBLIC_API_BASE_URL "http://localhost:8080"
+  # restart terminal after running setx, then start the dev server
+  npm run dev
+  ```
+- .env.local file (recommended for local dev)
+  Create a file named `.env.local` in the project root with:
+  ```env
+  NEXT_PUBLIC_API_BASE_URL=http://localhost:8080
+  ```
+  You can use the provided `.env.local.example` as a starting point.
+
+## Editing
+
+You can start editing the page by modifying `app/page.tsx` or any page under `src/app`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
