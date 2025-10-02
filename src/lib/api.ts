@@ -26,6 +26,16 @@ const processQueue = (error: Error | null, token: string | null = null) => {
 
 if (isBrowser) {
   api.interceptors.request.use((config) => {
+    // If the base URL is not set, we should not make the request.
+    if (!config.baseURL) {
+        const error = new AxiosError(
+            "API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL.",
+            "ERR_BAD_OPTION",
+            config
+        );
+        console.error(error.message);
+        return Promise.reject(error);
+    }
     console.log(`Making request to: ${config.baseURL}${config.url}`);
     const token = getAccessToken();
     if (token) {
@@ -37,6 +47,20 @@ if (isBrowser) {
 
   api.interceptors.response.use(
     (response) => {
+        const contentType = response.headers['content-type'];
+        // Ensure the response is JSON, as expected from our backend.
+        // If we get HTML, it is likely the dev server falling back on a failed request.
+        if (!contentType || !contentType.includes('application/json')) {
+            const error = new AxiosError(
+                `Invalid content type. Expected JSON but received ${contentType}`,
+                'ERR_BAD_RESPONSE',
+                response.config,
+                response.request,
+                response
+            );
+            return Promise.reject(error);
+        }
+
       console.log('Response received:', response.data);
       // Handle "soft errors" where the HTTP status is 2xx but the payload indicates an error.
       if (response.data && response.data.success === false) {
