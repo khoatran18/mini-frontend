@@ -18,7 +18,7 @@ export default function LoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await login(credentials, () => router.push('/'));
+      await login(credentials.username, credentials.password, credentials.role, () => router.push('/'));
     } catch (err) {
       setError('Failed to login. Please check your credentials.');
     }

@@ -8,23 +8,23 @@ interface AuthState {
   isAuthenticated: boolean;
   role: string | null;
   userId: number | null;
-  login: (credentials: LoginInput, onSuccess: () => void) => Promise<void>;
+  login: (credentials: LoginInput, role: string, onSuccess: () => void) => Promise<void>;
   register: (credentials: RegisterInput, onSuccess: () => void) => Promise<void>;
   logout: (onSuccess: () => void) => void;
   checkAuth: () => void;
 }
 
 export const useAuth = create<AuthState>((set) => ({
-  isAuthenticated: false,
+  isAuthenticated: Tokens.getAccessToken() ? true : false,
   role: null,
   userId: null,
-  login: async (credentials, onSuccess) => {
+  login: async (credentials, role, onSuccess) => {
     const response = await AuthAPI.login(credentials);
     if (!response.success) {
       throw new Error(response.message || 'Login failed');
     }
     const { access_token, refresh_token, role, user_id } = response;
-    Tokens.save(access_token, refresh_token, role, user_id);
+    Tokens.save(access_token, refresh_token);
     set({ isAuthenticated: true, role, userId: user_id });
     onSuccess();
   },
@@ -32,12 +32,7 @@ export const useAuth = create<AuthState>((set) => ({
     await AuthAPI.register(credentials);
     onSuccess();
   },
-  logout: (onSuccess) => {
-    Tokens.clear();
-    useCart.getState().clearCart();
-    set({ isAuthenticated: false, role: null, userId: null });
-    onSuccess();
-  },
+  logout: () => {}, // TODO: implement logout logic
   checkAuth: () => {
     const role = Tokens.getRole();
     const userId = Tokens.getUserId();
