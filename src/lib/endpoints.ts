@@ -90,6 +90,9 @@ export const OrderAPI = {
     }
     return api.get<GetOrdersOutput>(url).then(r => r.data.orders);
   },
+  getOrdersByBuyerAndStatus: (buyerId: number, status: string) => {
+    return api.get<GetOrdersOutput>(`/orders?buyer_id=${buyerId}&status=${status}`).then(r => r.data.orders);
+  },
   update: (id: number, input: UpdateOrderInput) => api.put<OrderCRUDOutput>(`/orders/${id}`, input).then(r => r.data),
   cancel: (id: number) => api.delete<OrderCRUDOutput>(`/orders/${id}`).then(r => r.data),
 };
