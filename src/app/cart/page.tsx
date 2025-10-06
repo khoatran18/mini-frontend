@@ -4,22 +4,25 @@
 import { useCart } from "@/lib/cart-store";
 import { OrderAPI } from "@/lib/endpoints";
 import { useRouter } from "next/navigation";
-import { OrderInput } from "@/lib/endpoints";
 
 const CartPage = () => {
   const { items, clearCart, removeItem, updateItemQuantity } = useCart();
   const router = useRouter();
 
   const handleCheckout = async () => {
-    const orderInput: OrderInput = {
+    // The backend expects the order items to be nested under an "order" object.
+    const orderPayload = {
+      order: {
         order_items: items.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
         })),
+      },
     };
 
     try {
-      await OrderAPI.create(orderInput);
+      // Pass the correctly structured payload to the create method.
+      await OrderAPI.create(orderPayload);
       alert("Order created successfully!");
       clearCart();
       router.push("/orders");

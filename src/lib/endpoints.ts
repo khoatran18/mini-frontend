@@ -31,7 +31,7 @@ export type ProductCRUDOutput = ApiMessage;
 // Orders
 export type OrderItem = { id: number; product_id: number; productName?: string; quantity: number; price: number; order_id: number };
 export type Order = { id: number; buyer_id: number; status: string; total_price: number; items: OrderItem[] };
-export type OrderInput = { order_items: { product_id: number; quantity: number; }[] };
+export type OrderInput = { order: { order_items: { product_id: number; quantity: number; }[] } };
 export type UpdateOrderInput = { status: string };
 export type GetOrdersOutput = { orders: Order[] } & ApiMessage;
 export type GetOrderOutput = { order: Order } & ApiMessage;
