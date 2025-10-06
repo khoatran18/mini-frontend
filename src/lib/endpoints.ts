@@ -1,3 +1,4 @@
+
 import api from './api';
 
 // General-purpose types
@@ -22,7 +23,7 @@ export type RegisterSellerRolesOutput = ApiMessage;
 
 // Products
 export type Product = { id: number; name: string; price: number; inventory: number; seller_id: number; attributes?: Record<string, any> };
-export type ProductInput = Omit<Product, 'id'>;
+export type ProductInput = Omit<Product, 'id' | 'seller_id'>;
 export type GetProductsOutput = { products: Product[] } & ApiMessage;
 export type GetProductOutput = { product: Product } & ApiMessage;
 export type ProductCRUDOutput = ApiMessage;
@@ -30,7 +31,7 @@ export type ProductCRUDOutput = ApiMessage;
 // Orders
 export type OrderItem = { id: number; product_id: number; productName?: string; quantity: number; price: number; order_id: number };
 export type Order = { id: number; buyer_id: number; status: string; total_price: number; items: OrderItem[] };
-export type OrderInput = { buyer_id: number; order_items: Omit<OrderItem, 'id' | 'order_id' | 'price'>[] };
+export type OrderInput = { order_items: { product_id: number; quantity: number; }[] };
 export type UpdateOrderInput = { status: string };
 export type GetOrdersOutput = { orders: Order[] } & ApiMessage;
 export type GetOrderOutput = { order: Order } & ApiMessage;
@@ -65,15 +66,16 @@ export const ProductAPI = {
   update: (id: number, input: Partial<ProductInput>) => api.put<ProductCRUDOutput>(`/products/${id}`, input).then(r => r.data),
   delete: (id: number) => api.delete<ProductCRUDOutput>(`/products/${id}`).then(r => r.data),
   getProductsBySeller: (sellerId: number) => api.get<GetProductsOutput>(`/products/seller/${sellerId}`).then(r => r.data.products),
+  getMyProducts: () => api.get<GetProductsOutput>('/products/my-products').then(r => r.data.products),
 };
 
 export const OrderAPI = {
   create: (input: OrderInput) => api.post<OrderCRUDOutput>('/orders', input).then(r => r.data),
   get: (id: number) => api.get<GetOrderOutput>(`/orders/${id}`).then(r => r.data.order),
-  getOrdersByBuyer: (buyerId: number, status?: string) => {
-    let url = `/orders?buyer_id=${buyerId}`;
+  getMyOrders: (status?: string) => {
+    let url = `/orders`;
     if (status) {
-      url += `&status=${status}`;
+      url += `?status=${status}`;
     }
     return api.get<GetOrdersOutput>(url).then(r => r.data.orders);
   },
@@ -97,12 +99,11 @@ export const SellerAPI = {
 
 // Token utilities
 export const Tokens = {
-  save: (access: string, refresh: string, role?: string, userId?: number) => {
+  save: (access: string, refresh: string, role?: string) => {
     if (typeof window === 'undefined') return;
     localStorage.setItem('access_token', access);
     localStorage.setItem('refresh_token', refresh);
     if (role) localStorage.setItem('user_role', role);
-    if (userId) localStorage.setItem('user_id', String(userId));
   },
   clear: () => {
     if (typeof window === 'undefined') return;
@@ -112,5 +113,4 @@ export const Tokens = {
     localStorage.removeItem('user_id');
   },
   getRole: () => (typeof window !== 'undefined' ? localStorage.getItem('user_role') : null),
-  getUserId: () => (typeof window !== 'undefined' ? Number(localStorage.getItem('user_id')) : null),
 };
