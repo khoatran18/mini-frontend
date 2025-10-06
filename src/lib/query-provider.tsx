@@ -31,14 +31,14 @@ export default function QueryProvider({
           onError: (error: ApiError) => {
             // Log the error for debugging purposes.
             // You can also add UI notifications (e.g., a toast) here.
-            console.error("Mutation Failed:", {
+            console.error("Mutation Failed:", JSON.stringify({
               // The generic error message from the Error object
               errorMessage: error.message,
               // The specific error message from our backend payload
               backendMessage: error.response?.data?.message,
               // The full error object for deep debugging
               fullError: error,
-            });
+            }, null, 2));
           },
         }),
       })
