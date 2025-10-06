@@ -5,7 +5,7 @@ export type ApiMessage = { message: string; success: boolean };
 
 // Auth
 export type LoginInput = { username: string; password: string; role: string };
-export type LoginOutput = { access_token: string; refresh_token: string; role: string; user_id: number; } & ApiMessage;
+export type LoginOutput = { access_token: string; refresh_token: string; message: string; success: boolean } & ApiMessage;
 
 export type RegisterInput = { username: string; password: string; role: string };
 export type RegisterOutput = ApiMessage;
