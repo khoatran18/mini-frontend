@@ -38,7 +38,6 @@ api.interceptors.request.use(
         type: 'request', 
         url: config.url, 
         method: config.method, 
-        headers: config.headers, 
         data: config.data 
     });
     return config;
@@ -73,12 +72,12 @@ api.interceptors.response.use(
         response: error.response?.data,
         request: {
             method: error.config?.method,
-            headers: error.config?.headers,
             data: error.config?.data,
         },
     };
     sendLog(errorLog);
-    console.error("API Error:", errorLog); // Keep console error for browser debugging
+    // Log the full error object as a string to prevent browser console from collapsing it
+    console.error("API Error:", JSON.stringify(errorLog, null, 2));
 
     // @ts-ignore
     if (error.response?.status === 401 && !originalRequest?._retry) {
