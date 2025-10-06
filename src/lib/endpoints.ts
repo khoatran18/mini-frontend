@@ -31,7 +31,18 @@ export type ProductCRUDOutput = ApiMessage;
 // Orders
 export type OrderItem = { id: number; product_id: number; productName?: string; quantity: number; price: number; order_id: number };
 export type Order = { id: number; buyer_id: number; status: string; total_price: number; items: OrderItem[] };
-export type OrderInput = { order: { order_items: { product_id: number; quantity: number; }[] } };
+// This type now reflects the enriched data sent during checkout.
+export type OrderInput = {
+  order: {
+    total_price: number;
+    order_items: {
+      product_id: number;
+      quantity: number;
+      name: string;
+      price: number;
+    }[];
+  }
+};
 export type UpdateOrderInput = { status: string };
 export type GetOrdersOutput = { orders: Order[] } & ApiMessage;
 export type GetOrderOutput = { order: Order } & ApiMessage;

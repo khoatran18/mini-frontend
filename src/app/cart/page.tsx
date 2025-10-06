@@ -9,19 +9,22 @@ const CartPage = () => {
   const { items, clearCart, removeItem, updateItemQuantity } = useCart();
   const router = useRouter();
 
+  const total_price = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
   const handleCheckout = async () => {
-    // The backend expects the order items to be nested under an "order" object.
     const orderPayload = {
       order: {
+        total_price: total_price,
         order_items: items.map((item) => ({
           product_id: item.id,
           quantity: item.quantity,
+          name: item.name, // Enriching with name
+          price: item.price, // Enriching with price
         })),
       },
     };
 
     try {
-      // Pass the correctly structured payload to the create method.
       await OrderAPI.create(orderPayload);
       alert("Order created successfully!");
       clearCart();
@@ -62,7 +65,7 @@ const CartPage = () => {
             </div>
           ))}
           <div className="text-right mt-4">
-            <p className="font-bold text-xl">Total: ${items.reduce((acc, item) => acc + item.price * item.quantity, 0)}</p>
+            <p className="font-bold text-xl">Total: ${total_price}</p>
           </div>
           <button onClick={handleCheckout} className="bg-blue-500 text-white px-4 py-2 rounded mt-4">Checkout</button>
         </div>

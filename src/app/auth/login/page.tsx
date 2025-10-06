@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/src/lib/auth-store';
-import { LoginInput } from '@/src/lib/endpoints';
+import { useAuth } from '@/lib/auth-store';
+import { LoginInput } from '@/lib/endpoints';
 
 export default function LoginPage() {
   const [credentials, setCredentials] = useState<LoginInput>({ username: '', password: '', role: 'buyer' });
@@ -17,10 +17,13 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(''); // Reset error on new submission
     try {
       await login(credentials.username, credentials.password, credentials.role, () => router.push('/'));
-    } catch (err) {
-      setError('Failed to login. Please check your credentials.');
+    } catch (err: any) {
+      // Extract user-friendly error message from the API response
+      const errorMessage = err.response?.data?.error || 'Failed to login. Please check your credentials.';
+      setError(errorMessage);
     }
   };
 
@@ -28,7 +31,7 @@ export default function LoginPage() {
     <div className="flex items-center justify-center h-screen">
       <form onSubmit={handleSubmit} className="p-8 bg-white rounded shadow-md w-96">
         <h1 className="text-2xl font-bold mb-4">Login</h1>
-        {error && <p className="text-red-500">{error}</p>}
+        {error && <p className="text-red-500 mb-4">{error}</p>}
         <div className="mb-4">
           <label>Username</label>
           <input
@@ -53,6 +56,7 @@ export default function LoginPage() {
           <label>Role</label>
           <select
             name="role"
+            value={credentials.role}
             onChange={handleChange}
             className="w-full p-2 border border-gray-300 rounded mt-1"
           >
