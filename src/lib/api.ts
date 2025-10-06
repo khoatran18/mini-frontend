@@ -1,148 +1,123 @@
-'use client';
 
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
-import { Tokens } from './endpoints';
+import axios, { AxiosError } from 'axios';
 
-const isBrowser = typeof window !== 'undefined';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-});
-
-const getAccessToken = () => localStorage.getItem('access_token');
-const getRefreshToken = () => localStorage.getItem('refresh_token');
-
-let isRefreshing = false;
-type PendingQueueItem = (token: string | null) => void;
-let pendingQueue: PendingQueueItem[] = [];
-
-const processQueue = (error: Error | null, token: string | null = null) => {
-  pendingQueue.forEach((prom) => prom(token));
-  pendingQueue = [];
-  isRefreshing = false;
+// Helper to send log messages to our own logging API
+const sendLog = async (data: any) => {
+    // Use a separate, basic fetch to avoid creating a loop with axios interceptors
+    try {
+        await fetch('/api/log', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+    } catch (logError) {
+        // If the logging API itself fails, log to console as a last resort.
+        console.error("Logging to /api/log failed:", logError);
+    }
 };
 
-if (isBrowser) {
-  api.interceptors.request.use((config) => {
-    // If the base URL is not set, we should not make the request.
-    if (!config.baseURL) {
-        const error = new AxiosError(
-            "API base URL is not configured. Please set NEXT_PUBLIC_API_BASE_URL.",
-            "ERR_BAD_OPTION",
-            config
-        );
-        console.error(error.message);
-        return Promise.reject(error);
+const api = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+api.interceptors.request.use(
+  (config) => {
+    if (typeof window !== 'undefined') {
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
     }
-    console.log(`Making request to: ${config.baseURL}${config.url}`);
-    const token = getAccessToken();
-    if (token) {
-      config.headers = config.headers ?? {};
-      (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
-    }
+    // Log the request before sending it
+    sendLog({ 
+        type: 'request', 
+        url: config.url, 
+        method: config.method, 
+        headers: config.headers, 
+        data: config.data 
+    });
     return config;
-  });
+  },
+  (error) => {
+    // Log request errors
+    sendLog({ type: 'request_error', error });
+    return Promise.reject(error);
+  }
+);
 
-  api.interceptors.response.use(
-    (response) => {
-        const contentType = response.headers['content-type'];
-        // Ensure the response is JSON, as expected from our backend.
-        // If we get HTML, it is likely the dev server falling back on a failed request.
-        if (!contentType || !contentType.includes('application/json')) {
-            const error = new AxiosError(
-                `Invalid content type. Expected JSON but received ${contentType}`,
-                'ERR_BAD_RESPONSE',
-                response.config,
-                response.request,
-                response
-            );
-            return Promise.reject(error);
-        }
+api.interceptors.response.use(
+  (response) => {
+    // Log successful responses
+    sendLog({ 
+        type: 'response', 
+        url: response.config.url, 
+        status: response.status, 
+        data: response.data 
+    });
+    return response;
+  },
+  async (error: AxiosError) => {
+    const originalRequest = error.config;
 
-      console.log('Response received:', response.data);
-      // Handle "soft errors" where the HTTP status is 2xx but the payload indicates an error.
-      if (response.data && response.data.success === false) {
-        const error = new AxiosError(
-          response.data.message || 'The backend indicated an error.',
-          'ERR_BAD_RESPONSE',
-          response.config,
-          response.request,
-          response
-        );
-        return Promise.reject(error);
-      }
-      return response;
-    },
-    async (error: AxiosError) => {
-      console.error('API Error:', { 
-        message: error.message, 
-        response: error.response?.data, 
-        status: error.response?.status, 
-        url: `${error.config?.baseURL}${error.config?.url}`,
-        method: error.config?.method,
-      });
+    // Detailed error logging
+    const errorLog = {
+        type: 'response_error',
+        message: error.message,
+        url: error.config?.url,
+        status: error.response?.status,
+        response: error.response?.data,
+        request: {
+            method: error.config?.method,
+            headers: error.config?.headers,
+            data: error.config?.data,
+        },
+    };
+    sendLog(errorLog);
+    console.error("API Error:", errorLog); // Keep console error for browser debugging
 
-      const status = error.response?.status;
-      const originalRequest = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
-
-      if (!originalRequest || status !== 401 || originalRequest._retry) {
-        return Promise.reject(error);
-      }
-
-      if ((originalRequest.url || '').includes('/auth/refresh-token')) {
-        return Promise.reject(error);
-      }
-
-      if (!isBrowser) {
-        return Promise.reject(error);
-      }
-
+    // @ts-ignore
+    if (error.response?.status === 401 && !originalRequest?._retry) {
+      // @ts-ignore
       originalRequest._retry = true;
+      const refreshToken = localStorage.getItem('refresh_token');
 
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          pendingQueue.push((token) => {
-            if (!token) return reject(error);
-            originalRequest.headers = originalRequest.headers ?? {};
-            (originalRequest.headers as Record<string, string>).Authorization = `Bearer ${token}`;
-            resolve(api(originalRequest));
-          });
-        });
+      if (!refreshToken) {
+        return Promise.reject(error);
       }
 
-      isRefreshing = true;
       try {
-        const refreshToken = getRefreshToken();
-        if (!refreshToken) throw new Error('No refresh token');
+        const response = await axios.post(
+          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh-token`,
+          { refresh_token: refreshToken }
+        );
 
-        const base = API_BASE_URL ? API_BASE_URL.replace(/\/$/, '') : '';
-        const url = `${base}/auth/refresh-token`;
-
-        const resp = await axios.post(url, { refresh_token: refreshToken });
-        const { access_token, refresh_token } = (resp.data || {}) as {
-          access_token?: string;
-          refresh_token?: string;
-        };
-
-        if (!access_token || !refresh_token) {
-          throw new Error('Invalid refresh response');
+        const { access_token, refresh_token } = response.data;
+        localStorage.setItem('access_token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
+        
+        if (originalRequest) {
+            api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+            // @ts-ignore
+            originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
+            return api(originalRequest);
         }
 
-        Tokens.save(access_token, refresh_token);
-
-        originalRequest.headers = originalRequest.headers ?? {};
-        (originalRequest.headers as Record<string, string>).Authorization = `Bearer ${access_token}`;
-
-        processQueue(null, access_token);
-        return api(originalRequest);
-      } catch (err) {
-        processQueue(err as Error);
-        return Promise.reject(err);
+      } catch (refreshError) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('user_role');
+        window.location.href = '/';
+        return Promise.reject(refreshError);
       }
     }
-  );
-}
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;
